@@ -83,9 +83,9 @@ def auth():
     authorized_usernames = get_authorized_usernames(url, server_port)
     authorized_group_dns = get_authorized_group_dns(url, server_port)
 
-    # No additional auth required
+    # If there is no entry, access is not permitted
     if not authorized_usernames and not authorized_group_dns:
-        return make_response("OK", 200)
+        return make_response("Forbidden", 403)
 
     # Check if user is authorized
     if username in authorized_usernames:
