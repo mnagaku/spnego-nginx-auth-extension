@@ -105,24 +105,16 @@ def auth():
         server = Server(os.getenv("AD_SERVER"))
         conn = Connection(server, authentication=SASL, sasl_mechanism=KERBEROS)
         conn.bind()
-        # Search for user
+        # Search user in groups
+        groups = "".join(map(lambda x: "(memberOf:1.2.840.113556.1.4.1941:=" + x + ")",
+            map(lambda x: x.replace("(", "\\28").replace(")", "\\29"),
+            authorized_group_dns)))
         conn.search(
             os.getenv("LDAP_SEARCH_BASE"),
-            f"(sAMAccountName={username})",
-            attributes=["memberOf"],
+            f"(&(objectClass=user)(sAMAccountName={username})(|{groups}))",
         )
-        if not conn.entries:
-            # User not found(Unexpected error)
-            return make_response("Access Denied", 401)
-
-        member_of = (
-            conn.entries[0].memberOf.values if "memberOf" in conn.entries[0] else []
-        )
-        if any(
-            group_dn in set(member_of)  # Convert to set for efficient lookup
-            for group_dn in authorized_group_dns
-        ):
-            # Group is authorized
+        if not not conn.entries:
+            # If user found in Groups, user is authorized
             return make_response("OK", 200)
 
     return make_response("Forbidden", 403)
@@ -130,3 +122,4 @@ def auth():
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
+
