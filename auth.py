@@ -35,35 +35,27 @@ def load_acl(path_to_config):
 acl = load_acl(os.getenv("CONFIG_PATH"))
 
 
-def extract_url(request_uri):
-    """Extract url from request uri."""
-    match = re.match(r"^GET\s+(\S+)\s+HTTP/1.1-uri$", request_uri)
-    if match:
-        return match.group(1)
-    return None
-
-
-def get_entry(url, port):
+def get_entry(uri, port):
     if port not in acl:
         return None
     longest_match = None
     max_length = 0
     for k, v in acl[port].items():
-        if url.startswith(k) and len(k) > max_length:
+        if uri.startswith(k) and len(k) > max_length:
             longest_match = v
             max_length = len(k)
     return longest_match
 
 
-def get_authorized_usernames(url, port):
-    """Return list of usernames for given url."""
-    entry = get_entry(url, port)
+def get_authorized_usernames(uri, port):
+    """Return list of usernames for given uri."""
+    entry = get_entry(uri, port)
     return entry.get("users", []) if entry else []
 
 
-def get_authorized_group_dns(url, port):
-    """Return list of group dns for given url."""
-    entry = get_entry(url, port)
+def get_authorized_group_dns(uri, port):
+    """Return list of group dns for given uri."""
+    entry = get_entry(uri, port)
     return entry.get("groups", []) if entry else []
 
 
@@ -71,16 +63,14 @@ def get_authorized_group_dns(url, port):
 def auth():
     """Authenticate user based on ACL."""
     username = request.headers.get("X-Remote-User")
-    request_uri = request.headers.get("X-Request-Uri")
+    uri = request.headers.get("X-Request-Uri")
     server_port = request.headers.get("X-Server-Port")
-    if not username or not request_uri:
+    if not username or not uri or not server_port:
         # Miscofigured nginx
         return make_response("Internal Server Error", 500)
 
-    url = extract_url(request_uri)
-
-    authorized_usernames = get_authorized_usernames(url, server_port)
-    authorized_group_dns = get_authorized_group_dns(url, server_port)
+    authorized_usernames = get_authorized_usernames(uri, server_port)
+    authorized_group_dns = get_authorized_group_dns(uri, server_port)
 
     # If there is no entry, access is not permitted
     if not authorized_usernames and not authorized_group_dns:
