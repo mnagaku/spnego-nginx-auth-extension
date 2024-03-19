@@ -5,6 +5,7 @@ import re
 import gssapi
 from flask import Flask, make_response, request
 from ldap3 import KERBEROS, SASL, Connection, Server
+from ldap3.utils.conv import escape_filter_chars
 
 app = Flask(__name__)
 
@@ -97,7 +98,7 @@ def auth():
         conn.bind()
         # Search user in groups
         groups = "".join(map(lambda x: "(memberOf:1.2.840.113556.1.4.1941:=" + x + ")",
-            map(lambda x: x.replace("(", "\\28").replace(")", "\\29"),
+            map(lambda x: escape_filter_chars(x),
             authorized_group_dns)))
         conn.search(
             os.getenv("LDAP_SEARCH_BASE"),
